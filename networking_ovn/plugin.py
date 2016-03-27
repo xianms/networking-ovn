@@ -171,7 +171,8 @@ class OVNPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         self.endpoints = [dhcp_rpc.DhcpRpcCallback(),
                           agents_db.AgentExtRpcCallback(),
                           metadata_rpc.MetadataRpcCallback()]
-        if not config.is_ovn_l3():
+        #if not config.is_ovn_l3():
+        if True:
             self.endpoints.append(l3_rpc.L3RpcCallback())
 
     def _setup_dhcp(self):
@@ -185,7 +186,8 @@ class OVNPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         self.agent_notifiers[const.AGENT_TYPE_DHCP] = (
             dhcp_rpc_agent_api.DhcpAgentNotifyAPI()
         )
-        if not config.is_ovn_l3():
+        #if not config.is_ovn_l3():
+        if True:
             self.router_scheduler = importutils.import_object(
                 cfg.CONF.router_scheduler_driver)
             l3_db.subscribe()
@@ -197,7 +199,8 @@ class OVNPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         self._setup_rpc()
         self.conn = n_rpc.create_connection()
         self.conn.create_consumer(topics.PLUGIN, self.endpoints, fanout=False)
-        if not config.is_ovn_l3():
+        #if not config.is_ovn_l3():
+        if True:
             self.conn.create_consumer(topics.L3PLUGIN, self.endpoints,
                                       fanout=False)
 
@@ -1297,11 +1300,19 @@ class OVNPlugin(db_base_plugin_v2.NeutronDbPluginV2,
     def add_router_interface(self, context, router_id, interface_info):
         router_interface_info = super(OVNPlugin, self).add_router_interface(
             context, router_id, interface_info)
+        import pdb
+        #pdb.set_trace()
+        sync_router = self.get_router(context, router_id)
+        name = sync_router.get('name', '')
+        if name[-len('vpn'):] == 'vpn':
+            return router_interface_info
 
+        '''
         if not config.is_ovn_l3():
             LOG.debug("OVN L3 mode is disabled, skipping "
                       "add_router_interface")
             return router_interface_info
+        '''
 
         port = self.get_port(context, router_interface_info['port_id'])
         subnet_id = port['fixed_ips'][0]['subnet_id']
@@ -1323,11 +1334,20 @@ class OVNPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         return router_interface_info
 
     def remove_router_interface(self, context, router_id, interface_info):
+        import pdb
+        #pdb.set_trace()
+        sync_router = self.get_router(context, router_id)
+        name = sync_router.get('name', '')
+        if name[-len('vpn'):] == 'vpn':
+            return super(OVNPlugin, self).remove_router_interface(
+                context, router_id, interface_info)
+        '''
         if not config.is_ovn_l3():
             LOG.debug("OVN L3 mode is disabled, skipping "
                       "remove_router_interface")
             return super(OVNPlugin, self).remove_router_interface(
                 context, router_id, interface_info)
+        '''
         # TODO(chandrav)
         # Need to rework this code to get the port_id when the incoming request
         # contains only the subnet_id. Also need to figure out if OVN needs to
